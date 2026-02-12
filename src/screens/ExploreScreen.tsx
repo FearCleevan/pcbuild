@@ -1,1232 +1,1238 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useMemo, useRef, useState } from "react";
 import {
-    FlatList,
-    Image,
-    Modal,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  FlatList,
+  Image,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 import {
-    SafeAreaView,
-    useSafeAreaInsets,
+  SafeAreaView,
+  useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import {
-    allComponents,
-    componentCategories,
-    type ComponentItem,
+  allComponents,
+  componentCategories,
+  type ComponentItem,
 } from "../../data/mockData";
 import {
-    BORDER_RADIUS,
-    COLORS,
-    SHADOWS,
-    SPACING,
-    TYPOGRAPHY,
+  BORDER_RADIUS,
+  COLORS,
+  SHADOWS,
+  SPACING,
+  TYPOGRAPHY,
 } from "../../theme";
 
 type F = {
-    minPrice: string;
-    maxPrice: string;
-    brands: string[];
-    series: string[];
-    sockets: string[];
-    memoryTypes: string[];
+  minPrice: string;
+  maxPrice: string;
+  brands: string[];
+  series: string[];
+  sockets: string[];
+  memoryTypes: string[];
 };
 const I: F = {
-    minPrice: "",
-    maxPrice: "",
-    brands: [],
-    series: [],
-    sockets: [],
-    memoryTypes: [],
+  minPrice: "",
+  maxPrice: "",
+  brands: [],
+  series: [],
+  sockets: [],
+  memoryTypes: [],
 };
 const n = (v: string) => {
-    const m = v.match(/(-?\d+(\.\d+)?)/);
-    return m ? Number(m[1]) : null;
+  const m = v.match(/(-?\d+(\.\d+)?)/);
+  return m ? Number(m[1]) : null;
 };
 const s = (c: ComponentItem) => {
-    const a = n(String(c.specs["Core Count"] ?? 0)) ?? 0,
-        b = n(String(c.specs["Thread Count"] ?? 0)) ?? 0,
-        d =
-            n(String(c.specs["Max Boost Clock"] ?? c.specs["Boost Clock"] ?? 0)) ?? 0,
-        m = n(String(c.specs.VRAM ?? c.specs["Memory Size"] ?? 0)) ?? 0,
-        p = Math.max(c.price, 1),
-        r = a * 5 + b * 2 + d * 6 + m * 2;
-    return r * 0.6 + (r / p) * 1e5 * 0.3 + Math.min(c.stockCount, 40) * 0.1;
+  const a = n(String(c.specs["Core Count"] ?? 0)) ?? 0,
+    b = n(String(c.specs["Thread Count"] ?? 0)) ?? 0,
+    d =
+      n(String(c.specs["Max Boost Clock"] ?? c.specs["Boost Clock"] ?? 0)) ?? 0,
+    m = n(String(c.specs.VRAM ?? c.specs["Memory Size"] ?? 0)) ?? 0,
+    p = Math.max(c.price, 1),
+    r = a * 5 + b * 2 + d * 6 + m * 2;
+  return r * 0.6 + (r / p) * 1e5 * 0.3 + Math.min(c.stockCount, 40) * 0.1;
 };
 
 export default function ExploreScreen() {
-    const insets = useSafeAreaInsets();
-    const [q, setQ] = useState("");
-    const [cat, setCat] = useState("all");
-    const [f, setF] = useState<F>(I);
-    const [d, setD] = useState<F>(I);
-    const [fo, setFo] = useState(false);
-    const [cmp, setCmp] = useState<string[]>([]);
-    const [co, setCo] = useState(false);
-    const [cq, setCq] = useState("");
-    const [po, setPo] = useState(false);
-    const [pid, setPid] = useState<string | null>(null);
-    const [t, setT] = useState({ v: false, m: "" });
-    const tt = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const toast = (m: string) => {
-        if (tt.current) clearTimeout(tt.current);
-        setT({ v: true, m });
-        tt.current = setTimeout(() => setT({ v: false, m: "" }), 1600);
+  const insets = useSafeAreaInsets();
+  const [q, setQ] = useState("");
+  const [cat, setCat] = useState("all");
+  const [f, setF] = useState<F>(I);
+  const [d, setD] = useState<F>(I);
+  const [fo, setFo] = useState(false);
+  const [cmp, setCmp] = useState<string[]>([]);
+  const [co, setCo] = useState(false);
+  const [cq, setCq] = useState("");
+  const [po, setPo] = useState(false);
+  const [pid, setPid] = useState<string | null>(null);
+  const [t, setT] = useState({ v: false, m: "" });
+  const tt = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const toast = (m: string) => {
+    if (tt.current) clearTimeout(tt.current);
+    setT({ v: true, m });
+    tt.current = setTimeout(() => setT({ v: false, m: "" }), 1600);
+  };
+
+  const cats = useMemo(
+    () => [
+      { id: "all", name: "All", icon: "view-grid-outline" },
+      ...componentCategories,
+    ],
+    [],
+  );
+  const p = useMemo(
+    () => (pid ? (allComponents.find((x) => x.id === pid) ?? null) : null),
+    [pid],
+  );
+  const base = useMemo(
+    () =>
+      cat === "all"
+        ? allComponents
+        : allComponents.filter((x) => x.type === cat),
+    [cat],
+  );
+  const compared = useMemo(
+    () => allComponents.filter((x) => cmp.includes(x.id)),
+    [cmp],
+  );
+  const cType = compared[0]?.type ?? null;
+  const winner = useMemo(
+    () =>
+      compared.length ? [...compared].sort((a, b) => s(b) - s(a))[0] : null,
+    [compared],
+  );
+
+  const opt = useMemo(() => {
+    const g = (k: string) => [
+      ...new Set(base.map((x) => String(x.specs[k] ?? "")).filter(Boolean)),
+    ];
+    return {
+      brands: [
+        ...new Set(
+          base
+            .map((x) => String(x.specs.Manufacturer ?? x.store ?? "").trim())
+            .filter(Boolean),
+        ),
+      ],
+      series: g("Series"),
+      sockets: g("Socket"),
+      memoryTypes: g("Memory Type"),
     };
+  }, [base]);
 
-    const cats = useMemo(
-        () => [
-            { id: "all", name: "All", icon: "view-grid-outline" },
-            ...componentCategories,
-        ],
-        [],
-    );
-    const p = useMemo(
-        () => (pid ? (allComponents.find((x) => x.id === pid) ?? null) : null),
-        [pid],
-    );
-    const base = useMemo(
-        () =>
-            cat === "all"
-                ? allComponents
-                : allComponents.filter((x) => x.type === cat),
-        [cat],
-    );
-    const compared = useMemo(
-        () => allComponents.filter((x) => cmp.includes(x.id)),
-        [cmp],
-    );
-    const cType = compared[0]?.type ?? null;
-    const winner = useMemo(
-        () =>
-            compared.length ? [...compared].sort((a, b) => s(b) - s(a))[0] : null,
-        [compared],
-    );
+  const list = useMemo(() => {
+    const z = q.trim().toLowerCase(),
+      mi = f.minPrice ? Number(f.minPrice) : null,
+      ma = f.maxPrice ? Number(f.maxPrice) : null;
+    return base.filter((x) => {
+      const hit =
+        !z ||
+        x.name.toLowerCase().includes(z) ||
+        Object.values(x.specs).join(" ").toLowerCase().includes(z);
+      const pr =
+        (mi === null || x.price >= mi) && (ma === null || x.price <= ma);
+      const b = String(x.specs.Manufacturer ?? x.store ?? ""),
+        sr = String(x.specs.Series ?? ""),
+        so = String(x.specs.Socket ?? ""),
+        mt = String(x.specs["Memory Type"] ?? "");
+      return (
+        hit &&
+        pr &&
+        (!f.brands.length || f.brands.includes(b)) &&
+        (!f.series.length || f.series.includes(sr)) &&
+        (!f.sockets.length || f.sockets.includes(so)) &&
+        (!f.memoryTypes.length || f.memoryTypes.includes(mt))
+      );
+    });
+  }, [q, base, f]);
 
-    const opt = useMemo(() => {
-        const g = (k: string) => [
-            ...new Set(base.map((x) => String(x.specs[k] ?? "")).filter(Boolean)),
-        ];
-        return {
-            brands: [
-                ...new Set(
-                    base
-                        .map((x) => String(x.specs.Manufacturer ?? x.store ?? "").trim())
-                        .filter(Boolean),
-                ),
-            ],
-            series: g("Series"),
-            sockets: g("Socket"),
-            memoryTypes: g("Memory Type"),
-        };
-    }, [base]);
+  const addList = useMemo(() => {
+    if (!cType) return [];
+    const z = cq.trim().toLowerCase();
+    return allComponents
+      .filter((x) => x.type === cType && !cmp.includes(x.id))
+      .filter((x) => !z || x.name.toLowerCase().includes(z))
+      .slice(0, 8);
+  }, [cType, cq, cmp]);
+  const similar = useMemo(
+    () =>
+      p
+        ? allComponents
+            .filter((x) => x.type === p.type && x.id !== p.id)
+            .slice(0, 5)
+        : [],
+    [p],
+  );
 
-    const list = useMemo(() => {
-        const z = q.trim().toLowerCase(),
-            mi = f.minPrice ? Number(f.minPrice) : null,
-            ma = f.maxPrice ? Number(f.maxPrice) : null;
-        return base.filter((x) => {
-            const hit =
-                !z ||
-                x.name.toLowerCase().includes(z) ||
-                Object.values(x.specs).join(" ").toLowerCase().includes(z);
-            const pr =
-                (mi === null || x.price >= mi) && (ma === null || x.price <= ma);
-            const b = String(x.specs.Manufacturer ?? x.store ?? ""),
-                sr = String(x.specs.Series ?? ""),
-                so = String(x.specs.Socket ?? ""),
-                mt = String(x.specs["Memory Type"] ?? "");
-            return (
-                hit &&
-                pr &&
-                (!f.brands.length || f.brands.includes(b)) &&
-                (!f.series.length || f.series.includes(sr)) &&
-                (!f.sockets.length || f.sockets.includes(so)) &&
-                (!f.memoryTypes.length || f.memoryTypes.includes(mt))
-            );
-        });
-    }, [q, base, f]);
+  const rows = useMemo(() => {
+    const ks = new Set<string>();
+    compared.forEach((x) => Object.keys(x.specs).forEach((k) => ks.add(k)));
+    const out: any[] = [
+      {
+        k: "Price",
+        v: compared.map((x) => `PHP ${x.price.toLocaleString()}`),
+        b:
+          compared.length > 1
+            ? compared.reduce((r, x, i, a) => (x.price < a[r].price ? i : r), 0)
+            : null,
+      },
+    ];
+    [...ks].slice(0, 16).forEach((k) => {
+      const v = compared.map((x) => String(x.specs[k] ?? "-")),
+        vv = v.map(n),
+        ok = vv.every((x) => x !== null) && compared.length > 1;
+      out.push({
+        k,
+        v,
+        b: ok
+          ? vv.reduce((r, x, i, a) => ((x ?? 0) > (a[r] ?? 0) ? i : r), 0)
+          : null,
+      });
+    });
+    return out;
+  }, [compared]);
 
-    const addList = useMemo(() => {
-        if (!cType) return [];
-        const z = cq.trim().toLowerCase();
-        return allComponents
-            .filter((x) => x.type === cType && !cmp.includes(x.id))
-            .filter((x) => !z || x.name.toLowerCase().includes(z))
-            .slice(0, 8);
-    }, [cType, cq, cmp]);
-    const similar = useMemo(
-        () =>
-            p
-                ? allComponents
-                    .filter((x) => x.type === p.type && x.id !== p.id)
-                    .slice(0, 5)
-                : [],
-        [p],
-    );
-
-    const rows = useMemo(() => {
-        const ks = new Set<string>();
-        compared.forEach((x) => Object.keys(x.specs).forEach((k) => ks.add(k)));
-        const out: any[] = [
-            {
-                k: "Price",
-                v: compared.map((x) => `PHP ${x.price.toLocaleString()}`),
-                b:
-                    compared.length > 1
-                        ? compared.reduce((r, x, i, a) => (x.price < a[r].price ? i : r), 0)
-                        : null,
-            },
-        ];
-        [...ks].slice(0, 16).forEach((k) => {
-            const v = compared.map((x) => String(x.specs[k] ?? "-")),
-                vv = v.map(n),
-                ok = vv.every((x) => x !== null) && compared.length > 1;
-            out.push({
-                k,
-                v,
-                b: ok
-                    ? vv.reduce((r, x, i, a) => ((x ?? 0) > (a[r] ?? 0) ? i : r), 0)
-                    : null,
-            });
-        });
-        return out;
-    }, [compared]);
-
-    const toggle = (x: ComponentItem) =>
-        setCmp((prev) => {
-            if (prev.includes(x.id)) {
-                toast(`${x.name} removed from compare list`);
-                return prev.filter((i) => i !== x.id);
-            }
-            if (prev.length) {
-                const b = allComponents.find((i) => i.id === prev[0]);
-                if (b && b.type !== x.type) {
-                    toast("You can compare same product category only");
-                    return prev;
-                }
-            }
-            toast(`${x.name} added to compare list`);
-            return [...prev, x.id];
-        });
-    const hs = compared.length >= 4;
-    return (
-        <SafeAreaView edges={["top"]} style={st.s}>
-            <View style={st.c}>
-                <View style={st.tb}>
-                    <View style={st.bw}>
-                        <View style={st.lb}>
-                            <MaterialCommunityIcons
-                                name="cpu-64-bit"
-                                size={20}
-                                color={COLORS.text.primary}
-                            />
-                        </View>
-                        <View>
-                            <Text style={st.bl}>Custom PC Build</Text>
-                            <Text style={st.bs}>Build. Compare. Upgrade.</Text>
-                        </View>
-                    </View>
-                    <View style={st.ar}>
-                        <Pressable style={st.ib} onPress={() => setCo(true)}>
-                            <MaterialCommunityIcons
-                                name="clipboard-text-outline"
-                                size={20}
-                                color={COLORS.text.primary}
-                            />
-                            {cmp.length > 0 ? (
-                                <View style={st.bad}>
-                                    <Text style={st.badT}>{cmp.length}</Text>
-                                </View>
-                            ) : null}
-                        </Pressable>
-                        <Pressable style={st.ib} onPress={() => toast("Cart route ready")}>
-                            <MaterialCommunityIcons
-                                name="cart-outline"
-                                size={20}
-                                color={COLORS.text.primary}
-                            />
-                        </Pressable>
-                    </View>
-                </View>
-                <Text style={st.t}>Explore Components</Text>
-                <Text style={st.sub}>
-                    Browse products, compare, and add items to your build cart.
-                </Text>
-                <View style={st.sr}>
-                    <View style={st.sw}>
-                        <MaterialCommunityIcons
-                            name="magnify"
-                            size={18}
-                            color={COLORS.text.tertiary}
-                        />
-                        <TextInput
-                            value={q}
-                            onChangeText={setQ}
-                            placeholder="Search products, brand, specs..."
-                            placeholderTextColor={COLORS.text.tertiary}
-                            style={st.si}
-                        />
-                    </View>
-                    <Pressable
-                        style={st.fb}
-                        onPress={() => {
-                            setD(f);
-                            setFo(true);
-                        }}
-                    >
-                        <MaterialCommunityIcons
-                            name="tune-variant"
-                            size={18}
-                            color={COLORS.text.primary}
-                        />
-                    </Pressable>
-                </View>
-                <FlatList
-                    data={cats}
-                    horizontal
-                    style={st.cl}
-                    keyExtractor={(x) => x.id}
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={st.cr}
-                    renderItem={({ item }) => {
-                        const a = cat === item.id;
-                        return (
-                            <Pressable
-                                style={[st.cc, a && st.cca]}
-                                onPress={() => {
-                                    setCat(item.id);
-                                    setF(I);
-                                    setD(I);
-                                }}
-                            >
-                                <MaterialCommunityIcons
-                                    name={item.icon as any}
-                                    size={14}
-                                    color={a ? COLORS.white : COLORS.text.secondary}
-                                />
-                                <Text numberOfLines={1} style={[st.ct, a && st.cta]}>
-                                    {item.name}
-                                </Text>
-                            </Pressable>
-                        );
-                    }}
-                />
-                <FlatList
-                    data={list}
-                    keyExtractor={(x) => x.id}
-                    numColumns={2}
-                    contentContainerStyle={st.g}
-                    columnWrapperStyle={st.gr}
-                    showsVerticalScrollIndicator={false}
-                    renderItem={({ item }) => {
-                        const a = cmp.includes(item.id);
-                        return (
-                            <Pressable
-                                style={st.card}
-                                onPress={() => {
-                                    setPid(item.id);
-                                    setPo(true);
-                                }}
-                            >
-                                <Image source={{ uri: item.image }} style={st.pi} />
-                                <Text numberOfLines={2} style={st.pn}>
-                                    {item.name}
-                                </Text>
-                                <Text style={st.pt}>{item.type.toUpperCase()}</Text>
-                                <View style={st.ps}>
-                                    <Text style={st.pp}>PHP {item.price.toLocaleString()}</Text>
-                                    <Text style={st.stk}>{item.stockCount} left</Text>
-                                </View>
-                                <View style={st.act}>
-                                    <Pressable
-                                        style={[st.cb, a && st.cba]}
-                                        onPress={() => toggle(item)}
-                                    >
-                                        <MaterialCommunityIcons
-                                            name={a ? "check-circle" : "scale-balance"}
-                                            size={16}
-                                            color={a ? COLORS.success : COLORS.text.primary}
-                                        />
-                                        <Text style={[st.ctx, a && st.ctxa]}>
-                                            {a ? "Compared" : "Add to Compare"}
-                                        </Text>
-                                    </Pressable>
-                                    <Pressable
-                                        style={st.cart}
-                                        onPress={() => toast(`${item.name} added to Cart`)}
-                                    >
-                                        <MaterialCommunityIcons
-                                            name="cart-plus"
-                                            size={17}
-                                            color={COLORS.text.primary}
-                                        />
-                                        <Text style={st.cartT}>Add to Cart</Text>
-                                    </Pressable>
-                                </View>
-                            </Pressable>
-                        );
-                    }}
-                />
+  const toggle = (x: ComponentItem) =>
+    setCmp((prev) => {
+      if (prev.includes(x.id)) {
+        toast(`${x.name} removed from compare list`);
+        return prev.filter((i) => i !== x.id);
+      }
+      if (prev.length) {
+        const b = allComponents.find((i) => i.id === prev[0]);
+        if (b && b.type !== x.type) {
+          toast("You can compare same product category only");
+          return prev;
+        }
+      }
+      toast(`${x.name} added to compare list`);
+      return [...prev, x.id];
+    });
+  const hs = compared.length >= 4;
+  return (
+    <SafeAreaView edges={["top"]} style={st.s}>
+      <View style={st.c}>
+        <View style={st.tb}>
+          <View style={st.bw}>
+            <View style={st.lb}>
+              <MaterialCommunityIcons
+                name="cpu-64-bit"
+                size={20}
+                color={COLORS.text.primary}
+              />
             </View>
-            <Modal
-                visible={fo}
-                transparent
-                animationType="slide"
-                onRequestClose={() => setFo(false)}
-            >
-                <View style={st.rdo}>
-                    <Pressable style={st.rb} onPress={() => setFo(false)} />
-                    <View style={st.rd}>
-                        <View style={st.dh}>
-                            <Text style={st.dt}>Filter Products</Text>
-                            <Pressable onPress={() => setFo(false)}>
-                                <MaterialCommunityIcons
-                                    name="close"
-                                    size={22}
-                                    color={COLORS.text.primary}
-                                />
-                            </Pressable>
-                        </View>
-
-                        <Text style={st.ft}>Price Range (PHP)</Text>
-                        <View style={st.pr}>
-                            <TextInput
-                                value={d.minPrice}
-                                onChangeText={(v) =>
-                                    setD((p) => ({ ...p, minPrice: v.replace(/[^0-9]/g, "") }))
-                                }
-                                placeholder="Min"
-                                placeholderTextColor={COLORS.text.tertiary}
-                                style={st.inp}
-                            />
-                            <TextInput
-                                value={d.maxPrice}
-                                onChangeText={(v) =>
-                                    setD((p) => ({ ...p, maxPrice: v.replace(/[^0-9]/g, "") }))
-                                }
-                                placeholder="Max"
-                                placeholderTextColor={COLORS.text.tertiary}
-                                style={st.inp}
-                            />
-                        </View>
-
-                        {(
-                            [
-                                ["Brand", opt.brands, d.brands, "brands"],
-                                ["Series", opt.series, d.series, "series"],
-                                ["Socket", opt.sockets, d.sockets, "sockets"],
-                                ["Memory Type", opt.memoryTypes, d.memoryTypes, "memoryTypes"],
-                            ] as const
-                        ).map(([label, items, selected, field]) =>
-                            items.length ? (
-                                <View key={label} style={st.fSec}>
-                                    <Text style={st.ft}>{label}</Text>
-                                    <View style={st.fWrap}>
-                                        {items.map((val) => {
-                                            const active = selected.includes(val);
-                                            return (
-                                                <Pressable
-                                                    key={val}
-                                                    style={[st.fChip, active && st.fChipA]}
-                                                    onPress={() =>
-                                                        setD((p) => ({
-                                                            ...p,
-                                                            [field]: active
-                                                                ? (p[field] as string[]).filter(
-                                                                    (x) => x !== val,
-                                                                )
-                                                                : [...(p[field] as string[]), val],
-                                                        }))
-                                                    }
-                                                >
-                                                    <Text style={[st.fChipT, active && st.fChipTA]}>
-                                                        {val}
-                                                    </Text>
-                                                </Pressable>
-                                            );
-                                        })}
-                                    </View>
-                                </View>
-                            ) : null,
-                        )}
-
-                        <View style={st.da}>
-                            <Pressable
-                                style={st.fClear}
-                                onPress={() => {
-                                    setD(I);
-                                    setF(I);
-                                    toast("Filters cleared");
-                                }}
-                            >
-                                <Text style={st.fClearT}>Clear</Text>
-                            </Pressable>
-                            <Pressable
-                                style={st.fApply}
-                                onPress={() => {
-                                    setF(d);
-                                    setFo(false);
-                                    toast("Filters applied");
-                                }}
-                            >
-                                <Text style={st.fApplyT}>Apply Filters</Text>
-                            </Pressable>
-                        </View>
-                    </View>
+            <View>
+              <Text style={st.bl}>Custom PC Build</Text>
+              <Text style={st.bs}>Build. Compare. Upgrade.</Text>
+            </View>
+          </View>
+          <View style={st.ar}>
+            <Pressable style={st.ib} onPress={() => setCo(true)}>
+              <MaterialCommunityIcons
+                name="clipboard-text-outline"
+                size={20}
+                color={COLORS.text.primary}
+              />
+              {cmp.length > 0 ? (
+                <View style={st.bad}>
+                  <Text style={st.badT}>{cmp.length}</Text>
                 </View>
-            </Modal>
-            <Modal
-                visible={po}
-                transparent
-                animationType="slide"
-                onRequestClose={() => setPo(false)}
-            >
-                <View style={st.bo}>
-                    <Pressable style={st.bb} onPress={() => setPo(false)} />
-                    <View
-                        style={[st.bsht, { paddingBottom: insets.bottom + SPACING.md }]}
-                    >
-                        <View style={st.sh}>
-                            <Text style={st.sht}>Product Details</Text>
-                            <Pressable onPress={() => setPo(false)}>
-                                <MaterialCommunityIcons
-                                    name="close"
-                                    size={24}
-                                    color={COLORS.text.primary}
-                                />
-                            </Pressable>
-                        </View>
-                        {p ? (
-                            <ScrollView contentContainerStyle={st.sc}>
-                                <Image source={{ uri: p.image }} style={st.di} />
-                                <Text style={st.dn}>{p.name}</Text>
-                                <Text style={st.dp}>PHP {p.price.toLocaleString()}</Text>
-                                <View style={st.blk}>
-                                    <Text style={st.blt}>Full Specifications</Text>
-                                    {Object.entries(p.specs).map(([k, v]) => (
-                                        <View key={k} style={st.r}>
-                                            <Text style={st.k}>{k}</Text>
-                                            <Text style={st.v}>{String(v)}</Text>
-                                        </View>
-                                    ))}
-                                </View>
-                                <View style={st.blk}>
-                                    <Text style={st.blt}>Similar Products</Text>
-                                    {similar.map((x) => (
-                                        <Pressable
-                                            key={x.id}
-                                            style={st.sim}
-                                            onPress={() => setPid(x.id)}
-                                        >
-                                            <Image source={{ uri: x.image }} style={st.simi} />
-                                            <View style={{ flex: 1 }}>
-                                                <Text numberOfLines={2} style={st.snm}>
-                                                    {x.name}
-                                                </Text>
-                                                <Text style={st.spr}>
-                                                    PHP {x.price.toLocaleString()}
-                                                </Text>
-                                            </View>
-                                            <MaterialCommunityIcons
-                                                name="chevron-right"
-                                                size={18}
-                                                color={COLORS.text.tertiary}
-                                            />
-                                        </Pressable>
-                                    ))}
-                                </View>
-                            </ScrollView>
-                        ) : null}
-                    </View>
+              ) : null}
+            </Pressable>
+            <Pressable style={st.ib} onPress={() => toast("Cart route ready")}>
+              <MaterialCommunityIcons
+                name="cart-outline"
+                size={20}
+                color={COLORS.text.primary}
+              />
+            </Pressable>
+          </View>
+        </View>
+        <Text style={st.t}>Explore Components</Text>
+        <Text style={st.sub}>
+          Browse products, compare, and add items to your build cart.
+        </Text>
+        <View style={st.sr}>
+          <View style={st.sw}>
+            <MaterialCommunityIcons
+              name="magnify"
+              size={18}
+              color={COLORS.text.tertiary}
+            />
+            <TextInput
+              value={q}
+              onChangeText={setQ}
+              placeholder="Search products, brand, specs..."
+              placeholderTextColor={COLORS.text.tertiary}
+              style={st.si}
+            />
+          </View>
+          <Pressable
+            style={st.fb}
+            onPress={() => {
+              setD(f);
+              setFo(true);
+            }}
+          >
+            <MaterialCommunityIcons
+              name="tune-variant"
+              size={18}
+              color={COLORS.text.primary}
+            />
+          </Pressable>
+        </View>
+        <FlatList
+          data={cats}
+          horizontal
+          style={st.cl}
+          keyExtractor={(x) => x.id}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={st.cr}
+          renderItem={({ item }) => {
+            const a = cat === item.id;
+            return (
+              <Pressable
+                style={[st.cc, a && st.cca]}
+                onPress={() => {
+                  setCat(item.id);
+                  setF(I);
+                  setD(I);
+                }}
+              >
+                <MaterialCommunityIcons
+                  name={item.icon as any}
+                  size={14}
+                  color={a ? COLORS.white : COLORS.text.secondary}
+                />
+                <Text numberOfLines={1} style={[st.ct, a && st.cta]}>
+                  {item.name}
+                </Text>
+              </Pressable>
+            );
+          }}
+        />
+        <FlatList
+          data={list}
+          keyExtractor={(x) => x.id}
+          numColumns={2}
+          contentContainerStyle={st.g}
+          columnWrapperStyle={st.gr}
+          showsVerticalScrollIndicator={false}
+          renderItem={({ item }) => {
+            const a = cmp.includes(item.id);
+            return (
+              <Pressable
+                style={st.card}
+                onPress={() => {
+                  setPid(item.id);
+                  setPo(true);
+                }}
+              >
+                <Image source={{ uri: item.image }} style={st.pi} />
+                <Text numberOfLines={2} style={st.pn}>
+                  {item.name}
+                </Text>
+                <Text style={st.pt}>{item.type.toUpperCase()}</Text>
+                <View style={st.ps}>
+                  <Text style={st.pp}>PHP {item.price.toLocaleString()}</Text>
+                  <Text style={st.stk}>{item.stockCount} left</Text>
                 </View>
-            </Modal>
-            <Modal
-                visible={co}
-                transparent
-                animationType="slide"
-                onRequestClose={() => setCo(false)}
-            >
-                <View style={st.bo}>
-                    <Pressable style={st.bb} onPress={() => setCo(false)} />
-                    <View
-                        style={[st.bsht, { paddingBottom: insets.bottom + SPACING.md }]}
-                    >
-                        <View style={st.sh}>
-                            <Text style={st.sht}>Compare Review</Text>
-                            <Pressable onPress={() => setCo(false)}>
-                                <MaterialCommunityIcons
-                                    name="close"
-                                    size={24}
-                                    color={COLORS.text.primary}
-                                />
-                            </Pressable>
-                        </View>
-                        <ScrollView contentContainerStyle={st.sc}>
-                            {!compared.length ? (
-                                <View style={st.empty}>
-                                    <Text style={st.et}>No items in compare list</Text>
-                                    <Text style={st.es}>Add products from Explore first.</Text>
-                                </View>
-                            ) : (
-                                <>
-                                    <View style={st.tool}>
-                                        <Pressable
-                                            style={st.clear}
-                                            onPress={() => {
-                                                setCmp([]);
-                                                setCq("");
-                                                toast("Compare list cleared");
-                                            }}
-                                        >
-                                            <Text style={st.clearT}>Clear All</Text>
-                                        </Pressable>
-                                    </View>
-                                    {winner ? (
-                                        <View style={st.win}>
-                                            <Text style={st.wb}>Best Overall Review</Text>
-                                            <Text style={st.wn}>{winner.name}</Text>
-                                        </View>
-                                    ) : null}
-                                    <View style={st.blk}>
-                                        <Text style={st.blt}>Compared Products</Text>
-                                        {compared.map((x) => (
-                                            <View key={x.id} style={st.crow}>
-                                                <Image source={{ uri: x.image }} style={st.cimg} />
-                                                <View style={{ flex: 1 }}>
-                                                    <Text numberOfLines={2} style={st.cn}>
-                                                        {x.name}
-                                                    </Text>
-                                                    <Text style={st.cm}>{x.type.toUpperCase()}</Text>
-                                                </View>
-                                                <Pressable
-                                                    onPress={() =>
-                                                        setCmp((p) => p.filter((i) => i !== x.id))
-                                                    }
-                                                >
-                                                    <MaterialCommunityIcons
-                                                        name="close-circle"
-                                                        size={20}
-                                                        color={COLORS.danger}
-                                                    />
-                                                </Pressable>
-                                            </View>
-                                        ))}
-                                    </View>
-                                    <View style={st.blk}>
-                                        <Text style={st.blt}>
-                                            Add More ({cType?.toUpperCase()})
-                                        </Text>
-                                        <View style={st.sw}>
-                                            <MaterialCommunityIcons
-                                                name="magnify"
-                                                size={18}
-                                                color={COLORS.text.tertiary}
-                                            />
-                                            <TextInput
-                                                value={cq}
-                                                onChangeText={setCq}
-                                                placeholder="Search same category..."
-                                                placeholderTextColor={COLORS.text.tertiary}
-                                                style={st.si}
-                                            />
-                                        </View>
-                                        {addList.map((x) => (
-                                            <Pressable
-                                                key={x.id}
-                                                style={st.add}
-                                                onPress={() => {
-                                                    setCmp((p) => [...p, x.id]);
-                                                    toast(`${x.name} added to compare list`);
-                                                }}
-                                            >
-                                                <Text numberOfLines={1} style={st.addn}>
-                                                    {x.name}
-                                                </Text>
-                                                <MaterialCommunityIcons
-                                                    name="plus-circle-outline"
-                                                    size={18}
-                                                    color={COLORS.primaryLight}
-                                                />
-                                            </Pressable>
-                                        ))}
-                                    </View>
-                                    <View style={st.blk}>
-                                        <Text style={st.blt}>Detailed Comparison</Text>
-                                        <ScrollView
-                                            horizontal={hs}
-                                            scrollEnabled={hs}
-                                            showsHorizontalScrollIndicator={false}
-                                        >
-                                            <View style={[st.tbl, !hs && st.tbln]}>
-                                                <View style={st.th}>
-                                                    <View style={[st.sc1, !hs && st.sc1n, st.hc]}>
-                                                        <Text style={st.hct}>Specification</Text>
-                                                    </View>
-                                                    {compared.map((x) => (
-                                                        <View
-                                                            key={x.id}
-                                                            style={[st.vc, !hs && st.vcn, st.hc]}
-                                                        >
-                                                            <Text numberOfLines={2} style={st.htn}>
-                                                                {x.name}
-                                                            </Text>
-                                                        </View>
-                                                    ))}
-                                                </View>
-                                                {rows.map((row: any) => (
-                                                    <View key={row.k} style={st.tr}>
-                                                        <View style={[st.sc1, !hs && st.sc1n, st.cell]}>
-                                                            <Text style={st.ck}>{row.k}</Text>
-                                                        </View>
-                                                        {row.v.map((val: string, i: number) => (
-                                                            <View
-                                                                key={`${row.k}-${i}`}
-                                                                style={[st.vc, !hs && st.vcn, st.cell]}
-                                                            >
-                                                                <View style={st.vw}>
-                                                                    <Text style={st.cv}>{val}</Text>
-                                                                    {row.b !== null ? (
-                                                                        <MaterialCommunityIcons
-                                                                            name={
-                                                                                row.b === i
-                                                                                    ? "check-circle"
-                                                                                    : "close-circle"
-                                                                            }
-                                                                            size={15}
-                                                                            color={
-                                                                                row.b === i
-                                                                                    ? COLORS.success
-                                                                                    : COLORS.danger
-                                                                            }
-                                                                        />
-                                                                    ) : null}
-                                                                </View>
-                                                            </View>
-                                                        ))}
-                                                    </View>
-                                                ))}
-                                            </View>
-                                        </ScrollView>
-                                    </View>
-                                </>
-                            )}
-                        </ScrollView>
-                    </View>
-                </View>
-            </Modal>
-            {t.v ? (
-                <View style={[st.to, { bottom: insets.bottom + 84 }]}>
+                <View style={st.act}>
+                  <Pressable
+                    style={[st.cb, a && st.cba]}
+                    onPress={() => toggle(item)}
+                  >
                     <MaterialCommunityIcons
-                        name="check-circle-outline"
-                        size={16}
-                        color={COLORS.white}
+                      name={a ? "check-circle" : "scale-balance"}
+                      size={16}
+                      color={a ? COLORS.success : COLORS.text.primary}
                     />
-                    <Text style={st.tox}>{t.m}</Text>
+                    <Text style={[st.ctx, a && st.ctxa]}>
+                      {a ? "Compared" : "Add to Compare"}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    style={st.cart}
+                    onPress={() => toast(`${item.name} added to Cart`)}
+                  >
+                    <MaterialCommunityIcons
+                      name="cart-plus"
+                      size={17}
+                      color={COLORS.text.primary}
+                    />
+                    <Text style={st.cartT}>Add to Cart</Text>
+                  </Pressable>
                 </View>
+              </Pressable>
+            );
+          }}
+        />
+      </View>
+      <Modal
+        visible={fo}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setFo(false)}
+      >
+        <View style={st.rdo}>
+          <Pressable style={st.rb} onPress={() => setFo(false)} />
+          <View style={st.rd}>
+            <View style={st.dh}>
+              <Text style={st.dt}>Filter Products</Text>
+              <Pressable onPress={() => setFo(false)}>
+                <MaterialCommunityIcons
+                  name="close"
+                  size={22}
+                  color={COLORS.text.primary}
+                />
+              </Pressable>
+            </View>
+
+            <Text style={st.ft}>Price Range (PHP)</Text>
+            <View style={st.pr}>
+              <TextInput
+                value={d.minPrice}
+                onChangeText={(v) =>
+                  setD((p) => ({ ...p, minPrice: v.replace(/[^0-9]/g, "") }))
+                }
+                placeholder="Min"
+                placeholderTextColor={COLORS.text.tertiary}
+                style={st.inp}
+              />
+              <TextInput
+                value={d.maxPrice}
+                onChangeText={(v) =>
+                  setD((p) => ({ ...p, maxPrice: v.replace(/[^0-9]/g, "") }))
+                }
+                placeholder="Max"
+                placeholderTextColor={COLORS.text.tertiary}
+                style={st.inp}
+              />
+            </View>
+
+            {(
+              [
+                ["Brand", opt.brands, d.brands, "brands"],
+                ["Series", opt.series, d.series, "series"],
+                ["Socket", opt.sockets, d.sockets, "sockets"],
+                ["Memory Type", opt.memoryTypes, d.memoryTypes, "memoryTypes"],
+              ] as const
+            ).map(([label, items, selected, field]) =>
+              items.length ? (
+                <View key={label} style={st.fSec}>
+                  <Text style={st.ft}>{label}</Text>
+                  <View style={st.fWrap}>
+                    {items.map((val) => {
+                      const active = selected.includes(val);
+                      return (
+                        <Pressable
+                          key={val}
+                          style={[st.fChip, active && st.fChipA]}
+                          onPress={() =>
+                            setD((p) => ({
+                              ...p,
+                              [field]: active
+                                ? (p[field] as string[]).filter(
+                                    (x) => x !== val,
+                                  )
+                                : [...(p[field] as string[]), val],
+                            }))
+                          }
+                        >
+                          <Text style={[st.fChipT, active && st.fChipTA]}>
+                            {val}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+              ) : null,
+            )}
+
+            <View style={st.da}>
+              <Pressable
+                style={st.fClear}
+                onPress={() => {
+                  setD(I);
+                  setF(I);
+                  toast("Filters cleared");
+                }}
+              >
+                <Text style={st.fClearT}>Clear</Text>
+              </Pressable>
+              <Pressable
+                style={st.fApply}
+                onPress={() => {
+                  setF(d);
+                  setFo(false);
+                  toast("Filters applied");
+                }}
+              >
+                <Text style={st.fApplyT}>Apply Filters</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+      <Modal
+        visible={po}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setPo(false)}
+      >
+        <View style={st.bo}>
+          <Pressable style={st.bb} onPress={() => setPo(false)} />
+          <View
+            style={[st.bsht, { paddingBottom: insets.bottom + SPACING.md }]}
+          >
+            <View style={st.sh}>
+              <Text style={st.sht}>Product Details</Text>
+              <Pressable onPress={() => setPo(false)}>
+                <MaterialCommunityIcons
+                  name="close"
+                  size={24}
+                  color={COLORS.text.primary}
+                />
+              </Pressable>
+            </View>
+            {p ? (
+              <ScrollView contentContainerStyle={st.sc}>
+                <Image source={{ uri: p.image }} style={st.di} />
+                <Text style={st.dn}>{p.name}</Text>
+                <Text style={st.dp}>PHP {p.price.toLocaleString()}</Text>
+                <View style={st.blk}>
+                  <Text style={st.blt}>Full Specifications</Text>
+                  {Object.entries(p.specs).map(([k, v]) => (
+                    <View key={k} style={st.r}>
+                      <Text style={st.k}>{k}</Text>
+                      <Text style={st.v}>{String(v)}</Text>
+                    </View>
+                  ))}
+                </View>
+                <View style={st.blk}>
+                  <Text style={st.blt}>Similar Products</Text>
+                  {similar.map((x) => (
+                    <Pressable
+                      key={x.id}
+                      style={st.sim}
+                      onPress={() => setPid(x.id)}
+                    >
+                      <Image source={{ uri: x.image }} style={st.simi} />
+                      <View style={{ flex: 1 }}>
+                        <Text numberOfLines={2} style={st.snm}>
+                          {x.name}
+                        </Text>
+                        <Text style={st.spr}>
+                          PHP {x.price.toLocaleString()}
+                        </Text>
+                      </View>
+                      <MaterialCommunityIcons
+                        name="chevron-right"
+                        size={18}
+                        color={COLORS.text.tertiary}
+                      />
+                    </Pressable>
+                  ))}
+                </View>
+              </ScrollView>
             ) : null}
-        </SafeAreaView>
-    );
+          </View>
+        </View>
+      </Modal>
+      <Modal
+        visible={co}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setCo(false)}
+      >
+        <View style={st.bo}>
+          <Pressable style={st.bb} onPress={() => setCo(false)} />
+          <View
+            style={[st.bsht, { paddingBottom: insets.bottom + SPACING.md }]}
+          >
+            <View style={st.sh}>
+              <Text style={st.sht}>Compare Review</Text>
+              <Pressable onPress={() => setCo(false)}>
+                <MaterialCommunityIcons
+                  name="close"
+                  size={24}
+                  color={COLORS.text.primary}
+                />
+              </Pressable>
+            </View>
+            <ScrollView contentContainerStyle={st.sc}>
+              {!compared.length ? (
+                <View style={st.empty}>
+                  <Text style={st.et}>No items in compare list</Text>
+                  <Text style={st.es}>Add products from Explore first.</Text>
+                </View>
+              ) : (
+                <>
+                  <View style={st.tool}>
+                    <Pressable
+                      style={st.clear}
+                      onPress={() => {
+                        setCmp([]);
+                        setCq("");
+                        toast("Compare list cleared");
+                      }}
+                    >
+                      <Text style={st.clearT}>Clear All</Text>
+                    </Pressable>
+                  </View>
+                  {winner ? (
+                    <View style={st.win}>
+                      <Text style={st.wb}>Best Overall Review</Text>
+                      <Text style={st.wn}>{winner.name}</Text>
+                    </View>
+                  ) : null}
+                  <View style={st.blk}>
+                    <Text style={st.blt}>Compared Products</Text>
+                    {compared.map((x) => (
+                      <View key={x.id} style={st.crow}>
+                        <Image source={{ uri: x.image }} style={st.cimg} />
+                        <View style={{ flex: 1 }}>
+                          <Text numberOfLines={2} style={st.cn}>
+                            {x.name}
+                          </Text>
+                          <Text style={st.cm}>{x.type.toUpperCase()}</Text>
+                        </View>
+                        <Pressable
+                          onPress={() =>
+                            setCmp((p) => p.filter((i) => i !== x.id))
+                          }
+                        >
+                          <MaterialCommunityIcons
+                            name="close-circle"
+                            size={20}
+                            color={COLORS.danger}
+                          />
+                        </Pressable>
+                      </View>
+                    ))}
+                  </View>
+                  <View style={st.blk}>
+                    <Text style={st.blt}>
+                      Add More ({cType?.toUpperCase()})
+                    </Text>
+                    <View style={st.sw}>
+                      <MaterialCommunityIcons
+                        name="magnify"
+                        size={18}
+                        color={COLORS.text.tertiary}
+                      />
+                      <TextInput
+                        value={cq}
+                        onChangeText={setCq}
+                        placeholder="Search same category..."
+                        placeholderTextColor={COLORS.text.tertiary}
+                        style={st.si}
+                      />
+                    </View>
+                    {addList.map((x) => (
+                      <Pressable
+                        key={x.id}
+                        style={st.add}
+                        onPress={() => {
+                          setCmp((p) => [...p, x.id]);
+                          toast(`${x.name} added to compare list`);
+                        }}
+                      >
+                        <Text numberOfLines={1} style={st.addn}>
+                          {x.name}
+                        </Text>
+                        <MaterialCommunityIcons
+                          name="plus-circle-outline"
+                          size={18}
+                          color={COLORS.primaryLight}
+                        />
+                      </Pressable>
+                    ))}
+                  </View>
+                  <View style={st.blk}>
+                    <Text style={st.blt}>Detailed Comparison</Text>
+                    <ScrollView
+                      horizontal={hs}
+                      scrollEnabled={hs}
+                      showsHorizontalScrollIndicator={false}
+                    >
+                      <View style={[st.tbl, !hs && st.tbln]}>
+                        <View style={st.th}>
+                          <View style={[st.sc1, !hs && st.sc1n, st.hc]}>
+                            <Text style={st.hct}>Specification</Text>
+                          </View>
+                          {compared.map((x) => (
+                            <View
+                              key={x.id}
+                              style={[st.vc, !hs && st.vcn, st.hc]}
+                            >
+                              <Text numberOfLines={2} style={st.htn}>
+                                {x.name}
+                              </Text>
+                            </View>
+                          ))}
+                        </View>
+                        {rows.map((row: any) => (
+                          <View key={row.k} style={st.tr}>
+                            <View style={[st.sc1, !hs && st.sc1n, st.cell]}>
+                              <Text style={st.ck}>{row.k}</Text>
+                            </View>
+                            {row.v.map((val: string, i: number) => (
+                              <View
+                                key={`${row.k}-${i}`}
+                                style={[st.vc, !hs && st.vcn, st.cell]}
+                              >
+                                <View style={st.vw}>
+                                  <Text style={st.cv}>{val}</Text>
+                                  {row.b !== null ? (
+                                    <MaterialCommunityIcons
+                                      name={
+                                        row.b === i
+                                          ? "check-circle"
+                                          : "close-circle"
+                                      }
+                                      size={15}
+                                      color={
+                                        row.b === i
+                                          ? COLORS.success
+                                          : COLORS.danger
+                                      }
+                                    />
+                                  ) : null}
+                                </View>
+                              </View>
+                            ))}
+                          </View>
+                        ))}
+                      </View>
+                    </ScrollView>
+                  </View>
+                </>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+      {t.v ? (
+        <View style={[st.to, { bottom: insets.bottom + 84 }]}>
+          <MaterialCommunityIcons
+            name="check-circle-outline"
+            size={16}
+            color={COLORS.white}
+          />
+          <Text style={st.tox}>{t.m}</Text>
+        </View>
+      ) : null}
+    </SafeAreaView>
+  );
 }
 
 const st = StyleSheet.create({
-    s: { flex: 1, backgroundColor: COLORS.surface },
-    c: {
-        flex: 1,
-        backgroundColor: COLORS.background,
-        paddingHorizontal: SPACING.lg,
-        paddingTop: SPACING.md,
-    },
-    tb: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: SPACING.md,
-    },
-    bw: { flexDirection: "row", alignItems: "center", gap: SPACING.sm },
-    lb: {
-        width: 38,
-        height: 38,
-        borderRadius: BORDER_RADIUS.md,
-        backgroundColor: COLORS.primary,
-        alignItems: "center",
-        justifyContent: "center",
-        ...SHADOWS.primary,
-    },
-    bl: {
-        color: COLORS.text.primary,
-        fontSize: TYPOGRAPHY.fontSizes.lg,
-        fontWeight: TYPOGRAPHY.fontWeights.bold,
-    },
-    bs: { color: COLORS.text.tertiary, fontSize: TYPOGRAPHY.fontSizes.sm },
-    ar: { flexDirection: "row", gap: SPACING.sm },
-    ib: {
-        position: "relative",
-        width: 38,
-        height: 38,
-        borderRadius: BORDER_RADIUS.full,
-        backgroundColor: COLORS.surfaceLight,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    bad: {
-        position: "absolute",
-        top: 2,
-        right: 2,
-        minWidth: 14,
-        height: 14,
-        borderRadius: BORDER_RADIUS.full,
-        backgroundColor: COLORS.danger,
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    badT: {
-        color: COLORS.white,
-        fontSize: 9,
-        fontWeight: TYPOGRAPHY.fontWeights.bold,
-    },
-    t: {
-        color: COLORS.text.primary,
-        fontSize: TYPOGRAPHY.fontSizes["2xl"],
-        fontWeight: TYPOGRAPHY.fontWeights.bold,
-    },
-    sub: {
-        color: COLORS.text.secondary,
-        fontSize: TYPOGRAPHY.fontSizes.sm,
-        marginTop: SPACING.xs,
-        marginBottom: SPACING.md,
-    },
-    sr: { flexDirection: "row", gap: SPACING.sm, marginBottom: SPACING.md },
-    sw: {
-        flex: 1,
-        flexDirection: "row",
-        alignItems: "center",
-        gap: SPACING.sm,
-        paddingHorizontal: SPACING.md,
-        borderRadius: BORDER_RADIUS.lg,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        backgroundColor: COLORS.surface,
-    },
-    si: {
-        flex: 1,
-        color: COLORS.text.primary,
-        fontSize: TYPOGRAPHY.fontSizes.sm,
-        paddingVertical: SPACING.sm + 2,
-    },
-    fb: {
-        width: 42,
-        borderRadius: BORDER_RADIUS.lg,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        backgroundColor: COLORS.surface,
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    cl: { minHeight: 44, maxHeight: 44 },
-    cr: {
-        alignItems: "center",
-        gap: SPACING.sm,
-        paddingBottom: SPACING.sm,
-        paddingRight: SPACING.md,
-    },
-    cc: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 6,
-        height: 34,
-        paddingHorizontal: SPACING.sm + 2,
-        borderRadius: BORDER_RADIUS.full,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        backgroundColor: COLORS.surface,
-    },
-    cca: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-    ct: {
-        color: COLORS.text.secondary,
-        fontSize: TYPOGRAPHY.fontSizes.sm,
-        flexShrink: 0,
-    },
-    cta: { color: COLORS.white },
-    g: { paddingBottom: 120 },
-    gr: { justifyContent: "space-between", marginBottom: SPACING.sm },
-    card: {
-        width: "48.5%",
-        backgroundColor: COLORS.surface,
-        borderColor: COLORS.border,
-        borderWidth: 1,
-        borderRadius: BORDER_RADIUS.lg,
-        padding: SPACING.sm,
-    },
-    pi: {
-        width: "100%",
-        height: 110,
-        borderRadius: BORDER_RADIUS.md,
-        marginBottom: SPACING.sm,
-        backgroundColor: COLORS.surfaceLight,
-    },
-    pn: {
-        color: COLORS.text.primary,
-        fontSize: TYPOGRAPHY.fontSizes.sm,
-        fontWeight: TYPOGRAPHY.fontWeights.semibold,
-        minHeight: 36,
-    },
-    pt: {
-        color: COLORS.primaryLight,
-        fontSize: TYPOGRAPHY.fontSizes.xs,
-        fontWeight: TYPOGRAPHY.fontWeights.bold,
-        marginTop: 2,
-        marginBottom: SPACING.xs,
-    },
-    ps: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        marginBottom: SPACING.sm,
-    },
-    pp: {
-        color: COLORS.text.primary,
-        fontSize: TYPOGRAPHY.fontSizes.sm,
-        fontWeight: TYPOGRAPHY.fontWeights.bold,
-    },
-    stk: { color: COLORS.text.tertiary, fontSize: TYPOGRAPHY.fontSizes.xs },
-    act: { flexDirection: "column", gap: SPACING.xs },
-    cb: {
-        width: "100%",
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 6,
-        borderRadius: BORDER_RADIUS.md,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        backgroundColor: COLORS.surfaceLight,
-        paddingVertical: SPACING.xs + 3,
-        paddingHorizontal: SPACING.xs,
-    },
-    cba: {
-        borderColor: COLORS.successDark,
-        backgroundColor: COLORS.success + "1f",
-    },
-    ctx: {
-        color: COLORS.text.primary,
-        fontSize: TYPOGRAPHY.fontSizes.xs,
-        fontWeight: TYPOGRAPHY.fontWeights.semibold,
-    },
-    ctxa: { color: COLORS.successLight },
-    cart: {
-        width: "100%",
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 6,
-        borderRadius: BORDER_RADIUS.md,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        backgroundColor: COLORS.surfaceLight,
-        paddingVertical: SPACING.xs + 3,
-        paddingHorizontal: SPACING.xs,
-    },
-    cartT: {
-        color: COLORS.text.primary,
-        fontSize: TYPOGRAPHY.fontSizes.xs,
-        fontWeight: TYPOGRAPHY.fontWeights.semibold,
-    },
-    rdo: { flex: 1, flexDirection: "row" },
-    rb: { flex: 1, backgroundColor: COLORS.overlay },
-    rd: {
-        width: "86%",
-        backgroundColor: COLORS.background,
-        borderLeftWidth: 1,
-        borderLeftColor: COLORS.border,
-        paddingHorizontal: SPACING.lg,
-        paddingTop: SPACING.xl,
-        paddingBottom: SPACING["2xl"],
-    },
-    dh: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: SPACING.lg,
-    },
-    dt: {
-        color: COLORS.text.primary,
-        fontSize: TYPOGRAPHY.fontSizes.xl,
-        fontWeight: TYPOGRAPHY.fontWeights.bold,
-    },
-    ft: {
-        color: COLORS.text.primary,
-        fontWeight: TYPOGRAPHY.fontWeights.semibold,
-        marginBottom: SPACING.xs,
-    },
-    pr: { flexDirection: "row", gap: SPACING.sm },
-    inp: {
-        flex: 1,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        borderRadius: BORDER_RADIUS.md,
-        backgroundColor: COLORS.surface,
-        paddingHorizontal: SPACING.sm,
-        paddingVertical: SPACING.sm,
-        color: COLORS.text.primary,
-    },
-    fSec: { marginTop: SPACING.md },
-    fWrap: { flexDirection: "row", flexWrap: "wrap", gap: SPACING.xs },
-    fChip: {
-        paddingHorizontal: SPACING.sm,
-        paddingVertical: SPACING.xs,
-        borderRadius: BORDER_RADIUS.full,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        backgroundColor: COLORS.surface,
-    },
-    fChipA: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-    fChipT: { color: COLORS.text.secondary, fontSize: TYPOGRAPHY.fontSizes.xs },
-    fChipTA: { color: COLORS.white },
-    da: { flexDirection: "row", gap: SPACING.sm, marginTop: SPACING.lg },
-    fClear: {
-        flex: 1,
-        alignItems: "center",
-        justifyContent: "center",
-        paddingVertical: SPACING.sm,
-        borderRadius: BORDER_RADIUS.lg,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        backgroundColor: COLORS.surface,
-    },
-    fClearT: {
-        color: COLORS.text.primary,
-        fontSize: TYPOGRAPHY.fontSizes.sm,
-        fontWeight: TYPOGRAPHY.fontWeights.semibold,
-    },
-    fApply: {
-        flex: 1.4,
-        alignItems: "center",
-        justifyContent: "center",
-        paddingVertical: SPACING.sm,
-        borderRadius: BORDER_RADIUS.lg,
-        borderWidth: 1,
-        borderColor: COLORS.primary,
-        backgroundColor: COLORS.primary,
-    },
-    fApplyT: {
-        color: COLORS.white,
-        fontSize: TYPOGRAPHY.fontSizes.sm,
-        fontWeight: TYPOGRAPHY.fontWeights.semibold,
-    },
-    bo: { flex: 1, justifyContent: "flex-end" },
-    bb: { ...StyleSheet.absoluteFillObject, backgroundColor: COLORS.overlay },
-    bsht: {
-        maxHeight: "90%",
-        backgroundColor: COLORS.background,
-        borderTopLeftRadius: BORDER_RADIUS["2xl"],
-        borderTopRightRadius: BORDER_RADIUS["2xl"],
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        borderBottomWidth: 0,
-        paddingHorizontal: SPACING.lg,
-        paddingTop: SPACING.md,
-    },
-    sh: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: SPACING.md,
-    },
-    sht: {
-        color: COLORS.text.primary,
-        fontSize: TYPOGRAPHY.fontSizes.xl,
-        fontWeight: TYPOGRAPHY.fontWeights.bold,
-    },
-    sc: { gap: SPACING.md, paddingBottom: SPACING.lg },
-    di: {
-        width: "100%",
-        height: 190,
-        borderRadius: BORDER_RADIUS.lg,
-        backgroundColor: COLORS.surfaceLight,
-    },
-    dn: {
-        color: COLORS.text.primary,
-        fontSize: TYPOGRAPHY.fontSizes.xl,
-        fontWeight: TYPOGRAPHY.fontWeights.bold,
-        marginTop: SPACING.sm,
-    },
-    dp: {
-        color: COLORS.primaryLight,
-        fontSize: TYPOGRAPHY.fontSizes.lg,
-        fontWeight: TYPOGRAPHY.fontWeights.semibold,
-        marginTop: SPACING.xs,
-    },
-    blk: {
-        backgroundColor: COLORS.surface,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        borderRadius: BORDER_RADIUS.lg,
-        padding: SPACING.md,
-        gap: SPACING.sm,
-    },
-    blt: {
-        color: COLORS.text.primary,
-        fontSize: TYPOGRAPHY.fontSizes.lg,
-        fontWeight: TYPOGRAPHY.fontWeights.bold,
-    },
-    r: {
-        borderTopWidth: 1,
-        borderTopColor: COLORS.border,
-        paddingTop: SPACING.sm,
-    },
-    k: {
-        color: COLORS.primaryLight,
-        fontSize: TYPOGRAPHY.fontSizes.xs,
-        fontWeight: TYPOGRAPHY.fontWeights.semibold,
-    },
-    v: { color: COLORS.text.secondary, fontSize: TYPOGRAPHY.fontSizes.sm },
-    sim: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: SPACING.sm,
-        borderTopWidth: 1,
-        borderTopColor: COLORS.border,
-        paddingTop: SPACING.sm,
-    },
-    simi: {
-        width: 52,
-        height: 52,
-        borderRadius: BORDER_RADIUS.md,
-        backgroundColor: COLORS.surfaceLight,
-    },
-    snm: {
-        color: COLORS.text.primary,
-        fontSize: TYPOGRAPHY.fontSizes.sm,
-        fontWeight: TYPOGRAPHY.fontWeights.semibold,
-    },
-    spr: { color: COLORS.text.secondary, fontSize: TYPOGRAPHY.fontSizes.xs },
-    empty: { marginTop: SPACING["2xl"], alignItems: "center" },
-    et: {
-        color: COLORS.text.primary,
-        fontSize: TYPOGRAPHY.fontSizes.lg,
-        fontWeight: TYPOGRAPHY.fontWeights.semibold,
-    },
-    es: { color: COLORS.text.secondary, marginTop: SPACING.xs },
-    tool: { flexDirection: "row", justifyContent: "flex-end" },
-    clear: {
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        borderRadius: BORDER_RADIUS.md,
-        backgroundColor: COLORS.surfaceLight,
-        paddingHorizontal: SPACING.sm,
-        paddingVertical: SPACING.xs,
-    },
-    clearT: { color: COLORS.text.primary, fontSize: TYPOGRAPHY.fontSizes.xs },
-    win: {
-        backgroundColor: COLORS.surface,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        borderRadius: BORDER_RADIUS.xl,
-        padding: SPACING.lg,
-    },
-    wb: {
-        color: COLORS.success,
-        fontSize: TYPOGRAPHY.fontSizes.xs,
-        fontWeight: TYPOGRAPHY.fontWeights.bold,
-    },
-    wn: {
-        color: COLORS.text.primary,
-        fontSize: TYPOGRAPHY.fontSizes.xl,
-        fontWeight: TYPOGRAPHY.fontWeights.bold,
-    },
-    crow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: SPACING.sm,
-        borderTopWidth: 1,
-        borderTopColor: COLORS.border,
-        paddingTop: SPACING.sm,
-    },
-    cimg: {
-        width: 42,
-        height: 42,
-        borderRadius: BORDER_RADIUS.md,
-        backgroundColor: COLORS.surfaceLight,
-    },
-    cn: { color: COLORS.text.primary, fontSize: TYPOGRAPHY.fontSizes.sm },
-    cm: { color: COLORS.text.tertiary, fontSize: TYPOGRAPHY.fontSizes.xs },
-    add: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        borderTopWidth: 1,
-        borderTopColor: COLORS.border,
-        paddingTop: SPACING.sm,
-    },
-    addn: { color: COLORS.text.secondary, flex: 1, marginRight: SPACING.sm },
-    tbl: {
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        borderRadius: BORDER_RADIUS.lg,
-        overflow: "hidden",
-    },
-    tbln: { width: "100%" },
-    th: {
-        flexDirection: "row",
-        backgroundColor: COLORS.surfaceLight,
-        borderBottomWidth: 1,
-        borderBottomColor: COLORS.border,
-    },
-    tr: {
-        flexDirection: "row",
-        borderBottomWidth: 1,
-        borderBottomColor: COLORS.border,
-    },
-    sc1: { width: 140 },
-    sc1n: { width: 110 },
-    vc: { width: 180 },
-    vcn: { flex: 1, width: undefined, minWidth: 90 },
-    hc: { padding: SPACING.sm, minHeight: 84, justifyContent: "center" },
-    hct: { color: COLORS.text.primary, fontWeight: TYPOGRAPHY.fontWeights.bold },
-    htn: { color: COLORS.text.primary, fontSize: TYPOGRAPHY.fontSizes.xs },
-    cell: {
-        padding: SPACING.sm,
-        borderRightWidth: 1,
-        borderRightColor: COLORS.border,
-        justifyContent: "center",
-    },
-    ck: {
-        color: COLORS.primaryLight,
-        fontSize: TYPOGRAPHY.fontSizes.xs,
-        fontWeight: TYPOGRAPHY.fontWeights.semibold,
-    },
-    vw: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: SPACING.xs,
-    },
-    cv: {
-        color: COLORS.text.secondary,
-        fontSize: TYPOGRAPHY.fontSizes.xs,
-        flex: 1,
-    },
-    to: {
-        position: "absolute",
-        left: SPACING.lg,
-        right: SPACING.lg,
-        paddingHorizontal: SPACING.md,
-        paddingVertical: SPACING.sm,
-        borderRadius: BORDER_RADIUS.lg,
-        backgroundColor: COLORS.surfaceElevated,
-        borderColor: COLORS.borderLight,
-        borderWidth: 1,
-        flexDirection: "row",
-        alignItems: "center",
-        gap: SPACING.sm,
-        ...SHADOWS.lg,
-    },
-    tox: { color: COLORS.white, fontSize: TYPOGRAPHY.fontSizes.sm, flex: 1 },
+  s: { flex: 1, backgroundColor: COLORS.surface },
+  c: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.md,
+  },
+  tb: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: SPACING.md,
+  },
+  bw: { flexDirection: "row", alignItems: "center", gap: SPACING.sm },
+  lb: {
+    width: 38,
+    height: 38,
+    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: COLORS.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    ...SHADOWS.primary,
+  },
+  bl: {
+    color: COLORS.text.primary,
+    fontSize: TYPOGRAPHY.fontSizes.lg,
+    fontWeight: TYPOGRAPHY.fontWeights.bold,
+  },
+  bs: { color: COLORS.text.tertiary, fontSize: TYPOGRAPHY.fontSizes.sm },
+  ar: { flexDirection: "row", gap: SPACING.sm },
+  ib: {
+    position: "relative",
+    width: 38,
+    height: 38,
+    borderRadius: BORDER_RADIUS.full,
+    backgroundColor: COLORS.surfaceLight,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  bad: {
+    position: "absolute",
+    top: 2,
+    right: 2,
+    minWidth: 14,
+    height: 14,
+    borderRadius: BORDER_RADIUS.full,
+    backgroundColor: COLORS.danger,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  badT: {
+    color: COLORS.white,
+    fontSize: 9,
+    fontWeight: TYPOGRAPHY.fontWeights.bold,
+  },
+  t: {
+    color: COLORS.text.primary,
+    fontSize: TYPOGRAPHY.fontSizes["2xl"],
+    fontWeight: TYPOGRAPHY.fontWeights.bold,
+  },
+  sub: {
+    color: COLORS.text.secondary,
+    fontSize: TYPOGRAPHY.fontSizes.sm,
+    marginTop: SPACING.xs,
+    marginBottom: SPACING.md,
+  },
+  sr: { flexDirection: "row", gap: SPACING.sm, marginBottom: SPACING.md },
+  sw: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+  },
+  si: {
+    flex: 1,
+    color: COLORS.text.primary,
+    fontSize: TYPOGRAPHY.fontSizes.sm,
+    paddingVertical: SPACING.sm + 2,
+  },
+  fb: {
+    width: 42,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cl: { minHeight: 44, maxHeight: 44 },
+  cr: {
+    alignItems: "center",
+    gap: SPACING.sm,
+    paddingBottom: SPACING.sm,
+    paddingRight: SPACING.md,
+  },
+  cc: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    height: 34,
+    paddingHorizontal: SPACING.sm + 2,
+    borderRadius: BORDER_RADIUS.full,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+  },
+  cca: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  ct: {
+    color: COLORS.text.secondary,
+    fontSize: TYPOGRAPHY.fontSizes.sm,
+    flexShrink: 0,
+  },
+  cta: { color: COLORS.white },
+  g: { paddingBottom: 120 },
+  gr: { justifyContent: "space-between", marginBottom: SPACING.sm },
+  card: {
+    width: "48.5%",
+    backgroundColor: COLORS.surface,
+    borderColor: COLORS.border,
+    borderWidth: 1,
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.sm,
+  },
+  pi: {
+    width: "100%",
+    height: 110,
+    borderRadius: BORDER_RADIUS.md,
+    marginBottom: SPACING.sm,
+    backgroundColor: COLORS.surfaceLight,
+  },
+  pn: {
+    color: COLORS.text.primary,
+    fontSize: TYPOGRAPHY.fontSizes.sm,
+    fontWeight: TYPOGRAPHY.fontWeights.semibold,
+    minHeight: 36,
+  },
+  pt: {
+    color: COLORS.primaryLight,
+    fontSize: TYPOGRAPHY.fontSizes.xs,
+    fontWeight: TYPOGRAPHY.fontWeights.bold,
+    marginTop: 2,
+    marginBottom: SPACING.xs,
+  },
+  ps: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: SPACING.sm,
+  },
+  pp: {
+    color: COLORS.text.primary,
+    fontSize: TYPOGRAPHY.fontSizes.sm,
+    fontWeight: TYPOGRAPHY.fontWeights.bold,
+  },
+  stk: { color: COLORS.text.tertiary, fontSize: TYPOGRAPHY.fontSizes.xs },
+  act: { flexDirection: "row", gap: SPACING.xs, alignItems: "stretch" },
+  cb: {
+    flex: 0,
+    minWidth: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surfaceLight,
+    paddingVertical: SPACING.xs + 2,
+    paddingHorizontal: 5,
+  },
+  cba: {
+    borderColor: COLORS.successDark,
+    backgroundColor: COLORS.success + "1f",
+  },
+  ctx: {
+    color: COLORS.text.primary,
+    fontSize: 10,
+    fontWeight: TYPOGRAPHY.fontWeights.semibold,
+    flexShrink: 1,
+    textAlign: "center",
+  },
+  ctxa: { color: COLORS.successLight },
+  cart: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surfaceLight,
+    paddingVertical: SPACING.xs + 2,
+    paddingHorizontal: 5,
+  },
+  cartT: {
+    color: COLORS.text.primary,
+    fontSize: 10,
+    fontWeight: TYPOGRAPHY.fontWeights.semibold,
+    flexShrink: 1,
+    textAlign: "center",
+  },
+  rdo: { flex: 1, flexDirection: "row" },
+  rb: { flex: 1, backgroundColor: COLORS.overlay },
+  rd: {
+    width: "86%",
+    backgroundColor: COLORS.background,
+    borderLeftWidth: 1,
+    borderLeftColor: COLORS.border,
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.xl,
+    paddingBottom: SPACING["2xl"],
+  },
+  dh: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: SPACING.lg,
+  },
+  dt: {
+    color: COLORS.text.primary,
+    fontSize: TYPOGRAPHY.fontSizes.xl,
+    fontWeight: TYPOGRAPHY.fontWeights.bold,
+  },
+  ft: {
+    color: COLORS.text.primary,
+    fontWeight: TYPOGRAPHY.fontWeights.semibold,
+    marginBottom: SPACING.xs,
+  },
+  pr: { flexDirection: "row", gap: SPACING.sm },
+  inp: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: COLORS.surface,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.sm,
+    color: COLORS.text.primary,
+  },
+  fSec: { marginTop: SPACING.md },
+  fWrap: { flexDirection: "row", flexWrap: "wrap", gap: SPACING.xs },
+  fChip: {
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: BORDER_RADIUS.full,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+  },
+  fChipA: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  fChipT: { color: COLORS.text.secondary, fontSize: TYPOGRAPHY.fontSizes.xs },
+  fChipTA: { color: COLORS.white },
+  da: { flexDirection: "row", gap: SPACING.sm, marginTop: SPACING.lg },
+  fClear: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: SPACING.sm,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+  },
+  fClearT: {
+    color: COLORS.text.primary,
+    fontSize: TYPOGRAPHY.fontSizes.sm,
+    fontWeight: TYPOGRAPHY.fontWeights.semibold,
+  },
+  fApply: {
+    flex: 1.4,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: SPACING.sm,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primary,
+  },
+  fApplyT: {
+    color: COLORS.white,
+    fontSize: TYPOGRAPHY.fontSizes.sm,
+    fontWeight: TYPOGRAPHY.fontWeights.semibold,
+  },
+  bo: { flex: 1, justifyContent: "flex-end" },
+  bb: { ...StyleSheet.absoluteFillObject, backgroundColor: COLORS.overlay },
+  bsht: {
+    maxHeight: "90%",
+    backgroundColor: COLORS.background,
+    borderTopLeftRadius: BORDER_RADIUS["2xl"],
+    borderTopRightRadius: BORDER_RADIUS["2xl"],
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderBottomWidth: 0,
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.md,
+  },
+  sh: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: SPACING.md,
+  },
+  sht: {
+    color: COLORS.text.primary,
+    fontSize: TYPOGRAPHY.fontSizes.xl,
+    fontWeight: TYPOGRAPHY.fontWeights.bold,
+  },
+  sc: { gap: SPACING.md, paddingBottom: SPACING.lg },
+  di: {
+    width: "100%",
+    height: 190,
+    borderRadius: BORDER_RADIUS.lg,
+    backgroundColor: COLORS.surfaceLight,
+  },
+  dn: {
+    color: COLORS.text.primary,
+    fontSize: TYPOGRAPHY.fontSizes.xl,
+    fontWeight: TYPOGRAPHY.fontWeights.bold,
+    marginTop: SPACING.sm,
+  },
+  dp: {
+    color: COLORS.primaryLight,
+    fontSize: TYPOGRAPHY.fontSizes.lg,
+    fontWeight: TYPOGRAPHY.fontWeights.semibold,
+    marginTop: SPACING.xs,
+  },
+  blk: {
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.md,
+    gap: SPACING.sm,
+  },
+  blt: {
+    color: COLORS.text.primary,
+    fontSize: TYPOGRAPHY.fontSizes.lg,
+    fontWeight: TYPOGRAPHY.fontWeights.bold,
+  },
+  r: {
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    paddingTop: SPACING.sm,
+  },
+  k: {
+    color: COLORS.primaryLight,
+    fontSize: TYPOGRAPHY.fontSizes.xs,
+    fontWeight: TYPOGRAPHY.fontWeights.semibold,
+  },
+  v: { color: COLORS.text.secondary, fontSize: TYPOGRAPHY.fontSizes.sm },
+  sim: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACING.sm,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    paddingTop: SPACING.sm,
+  },
+  simi: {
+    width: 52,
+    height: 52,
+    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: COLORS.surfaceLight,
+  },
+  snm: {
+    color: COLORS.text.primary,
+    fontSize: TYPOGRAPHY.fontSizes.sm,
+    fontWeight: TYPOGRAPHY.fontWeights.semibold,
+  },
+  spr: { color: COLORS.text.secondary, fontSize: TYPOGRAPHY.fontSizes.xs },
+  empty: { marginTop: SPACING["2xl"], alignItems: "center" },
+  et: {
+    color: COLORS.text.primary,
+    fontSize: TYPOGRAPHY.fontSizes.lg,
+    fontWeight: TYPOGRAPHY.fontWeights.semibold,
+  },
+  es: { color: COLORS.text.secondary, marginTop: SPACING.xs },
+  tool: { flexDirection: "row", justifyContent: "flex-end" },
+  clear: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: COLORS.surfaceLight,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+  },
+  clearT: { color: COLORS.text.primary, fontSize: TYPOGRAPHY.fontSizes.xs },
+  win: {
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: BORDER_RADIUS.xl,
+    padding: SPACING.lg,
+  },
+  wb: {
+    color: COLORS.success,
+    fontSize: TYPOGRAPHY.fontSizes.xs,
+    fontWeight: TYPOGRAPHY.fontWeights.bold,
+  },
+  wn: {
+    color: COLORS.text.primary,
+    fontSize: TYPOGRAPHY.fontSizes.xl,
+    fontWeight: TYPOGRAPHY.fontWeights.bold,
+  },
+  crow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACING.sm,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    paddingTop: SPACING.sm,
+  },
+  cimg: {
+    width: 42,
+    height: 42,
+    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: COLORS.surfaceLight,
+  },
+  cn: { color: COLORS.text.primary, fontSize: TYPOGRAPHY.fontSizes.sm },
+  cm: { color: COLORS.text.tertiary, fontSize: TYPOGRAPHY.fontSizes.xs },
+  add: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    paddingTop: SPACING.sm,
+  },
+  addn: { color: COLORS.text.secondary, flex: 1, marginRight: SPACING.sm },
+  tbl: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: BORDER_RADIUS.lg,
+    overflow: "hidden",
+  },
+  tbln: { width: "100%" },
+  th: {
+    flexDirection: "row",
+    backgroundColor: COLORS.surfaceLight,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  tr: {
+    flexDirection: "row",
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  sc1: { width: 140 },
+  sc1n: { width: 110 },
+  vc: { width: 180 },
+  vcn: { flex: 1, width: undefined, minWidth: 90 },
+  hc: { padding: SPACING.sm, minHeight: 84, justifyContent: "center" },
+  hct: { color: COLORS.text.primary, fontWeight: TYPOGRAPHY.fontWeights.bold },
+  htn: { color: COLORS.text.primary, fontSize: TYPOGRAPHY.fontSizes.xs },
+  cell: {
+    padding: SPACING.sm,
+    borderRightWidth: 1,
+    borderRightColor: COLORS.border,
+    justifyContent: "center",
+  },
+  ck: {
+    color: COLORS.primaryLight,
+    fontSize: TYPOGRAPHY.fontSizes.xs,
+    fontWeight: TYPOGRAPHY.fontWeights.semibold,
+  },
+  vw: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: SPACING.xs,
+  },
+  cv: {
+    color: COLORS.text.secondary,
+    fontSize: TYPOGRAPHY.fontSizes.xs,
+    flex: 1,
+  },
+  to: {
+    position: "absolute",
+    left: SPACING.lg,
+    right: SPACING.lg,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    borderRadius: BORDER_RADIUS.lg,
+    backgroundColor: COLORS.surfaceElevated,
+    borderColor: COLORS.borderLight,
+    borderWidth: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACING.sm,
+    ...SHADOWS.lg,
+  },
+  tox: { color: COLORS.white, fontSize: TYPOGRAPHY.fontSizes.sm, flex: 1 },
 });
